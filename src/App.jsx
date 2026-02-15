@@ -57,48 +57,44 @@ function generateInitialBoard() {
 }
 
 function generateColorZones(size) {
+  // Inicializamos el tablero vacío
   const colors = Array.from({ length: size }, () => Array(size).fill(null));
-  let currentColor = 0;
-
-  const floodFill = (row, col, color) => {
-    const directions = [
-      [0, 1],
-      [1, 0],
-      [0, -1],
-      [-1, 0],
-      [1, 1],
-      [1, -1],
-      [-1, 1],
-      [-1, -1],
-    ];
-    const stack = [{ row, col }];
-    while (stack.length > 0) {
-      const { row, col } = stack.pop();
-      if (
-        row >= 0 &&
-        row < size &&
-        col >= 0 &&
-        col < size &&
-        colors[row][col] === null
-      ) {
-        colors[row][col] = color;
-        directions.forEach(([dx, dy]) =>
-          stack.push({ row: row + dx, col: col + dy })
-        );
-      }
-    }
-  };
-
+  
+  // 1. Creamos "semillas" o centros para cada color
+  const seeds = [];
   for (let i = 0; i < size; i++) {
-    let row, col;
-    do {
-      row = Math.floor(Math.random() * size);
-      col = Math.floor(Math.random() * size);
-    } while (colors[row][col] !== null);
-
-    floodFill(row, col, currentColor);
-    currentColor++;
+    seeds.push({
+      r: Math.floor(Math.random() * size),
+      c: Math.floor(Math.random() * size),
+      color: i
+    });
   }
+
+  // 2. Para cada casilla del tablero, buscamos cuál es la semilla más cercana
+  for (let r = 0; r < size; r++) {
+    for (let c = 0; c < size; c++) {
+      let minDistance = Infinity;
+      let closestColor = 0;
+
+      for (const seed of seeds) {
+        // Distancia Manhattan (simple y efectiva para cuadrículas)
+        const distance = Math.abs(r - seed.r) + Math.abs(c - seed.c);
+        
+        // Si hay empate o es más cerca, nos quedamos con este color
+        if (distance < minDistance) {
+          minDistance = distance;
+          closestColor = seed.color;
+        }
+      }
+      colors[r][c] = closestColor;
+    }
+  }
+
+  // 3. (Opcional de seguridad) Aseguramos que al menos la casilla de la semilla tenga su color
+  // Esto evita que un color quede totalmente "tapado" por otro
+  seeds.forEach(seed => {
+    colors[seed.r][seed.c] = seed.color;
+  });
 
   return colors;
 }
@@ -109,13 +105,21 @@ function placeInitialQueens(board, colors) {
 
   for (let color = 0; color < size; color++) {
     let row, col;
-    do {
+    let attempts = 0;
+    let placed = false;
+
+    // Intentamos colocar la reina 100 veces. Si no podemos, pasamos (para evitar bloqueo)
+    while (attempts < 100 && !placed) {
       row = Math.floor(Math.random() * size);
       col = Math.floor(Math.random() * size);
-    } while (colors[row][col] !== color || placedQueens.has(`${row},${col}`));
-
-    board[row][col] = 'Q';
-    placedQueens.add(`${row},${col}`);
+      
+      if (colors[row][col] === color && !placedQueens.has(`${row},${col}`)) {
+        board[row][col] = 'Q';
+        placedQueens.add(`${row},${col}`);
+        placed = true;
+      }
+      attempts++;
+    }
   }
 }
 
